@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catch the Ball - Elite Game</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background-color: #050505;
+            overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+            cursor: none; /* Hide cursor for better game feel */
+        }
+
+        /* The Spinning Red Box (Your Paddle) */
+        #box {
+            width: 150px;
+            height: 150px;
+            position: absolute;
+            border: 10px solid #ff0000;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
+            animation: spin 3s linear infinite;
+            pointer-events: none; /* Let mouse pass through to the script */
+        }
+
+        /* The Ball */
+        #ball {
+            width: 25px;
+            height: 25px;
+            background-color: #ffffff;
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 20px #fff;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Game Over Text */
+        #msg {
+            color: white;
+            font-family: sans-serif;
+            font-size: 24px;
+            display: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="msg">GAME OVER<br><small>Click to Restart</small></div>
+    <div id="box"></div>
+    <div id="ball"></div>
+
+    <script>
+        const ball = document.getElementById('ball');
+        const box = document.getElementById('box');
+        const msg = document.getElementById('msg');
+
+        let bX = window.innerWidth / 2;
+        let bY = 50;
+        let bVX = 4;
+        let bVY = 0;
+        
+        let mX = 0;
+        let mY = 0;
+
+        const gravity = 0.25;
+        const bounce = 1.05; // Slightly more than 1 to give it a "jump" boost
+
+        // Track Mouse Position
+        window.addEventListener('mousemove', (e) => {
+            mX = e.clientX;
+            mY = e.clientY;
+            // Move the box to mouse position
+            box.style.left = (mX - 75) + 'px';
+            box.style.top = (mY - 75) + 'px';
+        });
+
+        function gameLoop() {
+            // Apply Gravity to Ball
+            bVY += gravity;
+            bX += bVX;
+            bY += bVY;
+
+            // Wall Bouncing (Sides)
+            if (bX <= 0 || bX >= window.innerWidth - 25) {
+                bVX *= -1;
+            }
+
+            // COLLISION DETECTION: Check if ball hits the box
+            let boxRect = box.getBoundingClientRect();
+            
+            if (bY + 25 >= boxRect.top && 
+                bY <= boxRect.bottom && 
+                bX + 25 >= boxRect.left && 
+                bX <= boxRect.right) {
+                
+                // If it hits the top area of the box, jump up!
+                if (bVY > 0) { 
+                    bY = boxRect.top - 26;
+                    bVY *= -bounce; 
+                    // Add some horizontal variety based on where it hit
+                    bVX += (bX - (boxRect.left + 75)) * 0.1;
+                }
+            }
+
+            // GAME OVER: If ball falls below screen
+            if (bY > window.innerHeight) {
+                msg.style.display = 'block';
+                return; // Stop the loop
+            }
+
+            // Render Ball
+            ball.style.left = bX + 'px';
+            ball.style.top = bY + 'px';
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Restart Game on Click
+        window.addEventListener('click', () => {
+            if (msg.style.display === 'block') {
+                location.reload();
+            }
+        });
+
+        gameLoop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capture the Ball - Spinning Gate</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background-color: #050505;
+            overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+            cursor: none; /* Hide cursor for immersion */
+        }
+
+        /* The Spinning Red Box (Your Paddle with a Gap) */
+        #box-paddle {
+            width: 180px;
+            height: 180px;
+            position: absolute;
+            
+            /* Define solid red walls on three sides */
+            border-bottom: 12px solid #ff0000;
+            border-left: 12px solid #ff0000;
+            border-right: 12px solid #ff0000;
+            
+            /* Define the OPEN GATE on the Top side */
+            /* The gap is the full width (180px) of the top side */
+            border-top: 12px solid transparent; 
+
+            border-radius: 15px;
+            box-shadow: 0 0 40px rgba(255, 0, 0, 0.5);
+            animation: spinGate 4s linear infinite;
+            pointer-events: none; /* Let mouse input pass to the script */
+        }
+
+        /* Decorative Solid Top Walls (creating the precise gap) */
+        /* To make a gap that is exactly 2x ball size, we need solid walls on the sides of the gate */
+        #box-paddle::before, #box-paddle::after {
+            content: '';
+            position: absolute;
+            top: -12px; /* Position over the transparent border-top */
+            height: 12px;
+            background-color: #ff0000;
+        }
+        /* Left solid wall of the gate (leaves a 50px gap in the middle) */
+        #box-paddle::before { left: 0; width: 65px; border-radius: 10px 0 0 10px; }
+        /* Right solid wall of the gate */
+        #box-paddle::after { right: 0; width: 65px; border-radius: 0 10px 10px 0; }
+
+        /* The Ball (size 25px) */
+        #ball {
+            width: 25px;
+            height: 25px;
+            background-color: #ffffff;
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 20px #fff;
+        }
+
+        @keyframes spinGate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Game State Message */
+        #msg {
+            color: white;
+            font-family: sans-serif;
+            font-size: 28px;
+            text-align: center;
+            position: fixed;
+            top: 20px;
+            display: none;
+            text-shadow: 0 0 10px #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="msg">CAPTURED!<br><small>Click to Restart</small></div>
+    <div id="box-paddle"></div>
+    <div id="ball"></div>
+
+    <script>
+        const ball = document.getElementById('ball');
+        const box = document.getElementById('box-paddle');
+        const msg = document.getElementById('msg');
+
+        // Initial Ball State
+        let bX = Math.random() * (window.innerWidth - 100) + 50;
+        let bY = 50;
+        let bVX = (Math.random() - 0.5) * 8; // Random horizontal velocity
+        let bVY = 0;
+        
+        let mX = 0;
+        let mY = 0;
+
+        // Physics Constants
+        const gravity = 0.3;
+        const bounceFactor = 0.95; // Real-life energy loss
+        const captureBounce = 1.05; // Extra energy if captured? Or should it stop? Let's stop it for now.
+
+        // Track Mouse Position to move the box
+        window.addEventListener('mousemove', (e) => {
+            mX = e.clientX;
+            mY = e.clientY;
+            // Center the spinning box on the mouse
+            box.style.left = (mX - 90) + 'px';
+            box.style.top = (mY - 90) + 'px';
+        });
+
+        function gameLoop() {
+            // 1. Apply Physics to the Ball
+            bVY += gravity;
+            bX += bVX;
+            bY += bVY;
+
+            // 2. Wall Bouncing (Screen Edges)
+            if (bX <= 0 || bX >= window.innerWidth - 25) {
+                bVX *= -1;
+            }
+
+            // 3. Game Over (Reset if ball falls off screen)
+            if (bY > window.innerHeight) {
+                bX = window.innerWidth / 2;
+                bY = 50;
+                bVY = 0;
+                bVX = (Math.random() - 0.5) * 8;
+                return; // Restart loop
+            }
+
+            // 4. COMPLEX COLLISION: Check if ball intersects the spinning gate
+            let boxRect = box.getBoundingClientRect();
+            
+            // Define the precise center of the gate opening (50px wide)
+            const gateCenterX = boxRect.left + (boxRect.width / 2);
+            const gateCenterY = boxRect.top; // The gate is always on the 'top' side
+            const gapWidth = 50; // (2x ball size)
+
+            // Calculate the distance from the ball to the center of the gate
+            let distX = bX + 12.5 - gateCenterX;
+            let distY = bY + 12.5 - gateCenterY;
+
+            // Check if the ball is touching ANY part of the box structure
+            if (bY + 25 >= boxRect.top && 
+                bY <= boxRect.bottom && 
+                bX + 25 >= boxRect.left && 
+                bX <= boxRect.right) {
+                
+                // --- SUB-CHECK: Did it go into the precise 50px gate? ---
+                // Since the box is spinning, we are defining 'gate' as a specific logical zone.
+                // We check if the ball hit the top face AND is horizontally aligned with the 50px gap.
+                if (bY <= boxRect.top + 20 && Math.abs(distX) < (gapWidth / 2)) {
+                    // *** CAPTURED! ***
+                    ball.style.display = 'none'; // Hide ball
+                    msg.style.display = 'block'; // Show success message
+                    bVY = 0; bVX = 0; // Stop ball physics
+                    return; // Stop the game loop
+                } 
+                
+                // --- DEFAULT: It hit a solid wall (or "jump" off) ---
+                // If it hits the bottom face
+                if (bY + 25 >= boxRect.bottom && bVY > 0) {
+                    bY = boxRect.bottom + 1;
+                    bVY *= -bounceFactor;
+                }
+                // If it hits the top face but *not* the gate (jump logic)
+                else if (bVY > 0) { 
+                    bY = boxRect.top - 26;
+                    bVY *= -1.05; // Give it a slight "jump" boost off the solid wall
+                    // Add some horizontal kick based on collision point
+                    bVX += (bX - gateCenterX) * 0.1;
+                }
+            }
+
+            // 5. Render Ball Position
+            ball.style.left = bX + 'px';
+            ball.style.top = bY + 'px';
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Restart Game on Click
+        window.addEventListener('click', () => {
+            if (msg.style.display === 'block') {
+                location.reload();
+            }
+        });
+
+        gameLoop();
+    </script>
+</body>
+</html>

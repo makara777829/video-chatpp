@@ -1,0 +1,48 @@
+.rotating-box {
+  width: 200px;
+  height: 200px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: transparent; /* No fill color */
+  border-radius: 10px;
+  overflow: hidden; /* Clips the rotating element to the box shape */
+}
+
+/* This creates the "border" color */
+.rotating-box::before {
+  content: '';
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  /* Define your border colors here */
+  background: conic-gradient(#00f2fe, #4facfe, #00f2fe);
+  animation: rotate 4s linear infinite;
+}
+
+/* This creates the transparent inner area */
+.rotating-box::after {
+  content: '';
+  position: absolute;
+  inset: 4px; /* The thickness of your border */
+  background: #fff; /* Match your page background color to look "empty" */
+  border-radius: 8px;
+}
+
+/* Keeps your content on top of the animation */
+.rotating-box span {
+  z-index: 10;
+  font-family: sans-serif;
+  font-weight: bold;
+}
+
+/* The rotation logic */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
